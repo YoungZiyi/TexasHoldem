@@ -60,6 +60,26 @@ uvicorn src.backend.main:app --reload
 
 The API will be accessible at `http://127.0.0.1:8000`.
 
+## Running with Docker
+
+You can containerize and run the application using Docker and Docker Compose.
+
+1.  **Build the Docker image:**
+    ```bash
+    docker-compose build
+    ```
+
+2.  **Run the container:**
+    ```bash
+    docker-compose up
+    ```
+    The application will be available at `http://localhost:8000`. The `--reload` flag is enabled in `docker-compose.yml` for development, so changes to the code will automatically restart the server inside the container.
+
+3.  **Run tests in Docker (optional):**
+    ```bash
+    docker-compose run backend pytest
+    ```
+
 ## API Endpoints
 
 *   **`POST /games/{game_id}`**: Create a new game.
