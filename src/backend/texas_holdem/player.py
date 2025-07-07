@@ -1,5 +1,5 @@
 
-from texas_holdem.card import Card
+from .card import Card
 
 
 class Player:

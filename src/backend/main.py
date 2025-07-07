@@ -1,6 +1,6 @@
 
 from fastapi import FastAPI, HTTPException
-from texas_holdem.game import Game
+from .texas_holdem.game import Game
 
 app = FastAPI()
 

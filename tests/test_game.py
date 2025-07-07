@@ -1,5 +1,5 @@
 
-from texas_holdem.game import Game
+from src.backend.texas_holdem.game import Game
 
 
 def test_game_creation():

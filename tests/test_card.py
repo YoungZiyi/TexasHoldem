@@ -1,5 +1,5 @@
 
-from texas_holdem.card import Card, Suit, Rank
+from src.backend.texas_holdem.card import Card, Suit, Rank
 
 
 def test_card_creation():

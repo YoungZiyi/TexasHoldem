@@ -1,6 +1,6 @@
 
-from texas_holdem.deck import Deck
-from texas_holdem.player import Player
+from .deck import Deck
+from .player import Player
 
 
 class Game:

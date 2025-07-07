@@ -1,7 +1,7 @@
 
 import random
 
-from texas_holdem.card import Card, Suit, Rank
+from .card import Card, Suit, Rank
 
 
 class Deck:

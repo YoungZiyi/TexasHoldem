@@ -1,8 +1,8 @@
 
 import pytest
 
-from texas_holdem.deck import Deck
-from texas_holdem.card import Card
+from src.backend.texas_holdem.deck import Deck
+from src.backend.texas_holdem.card import Card
 
 
 def test_deck_creation():

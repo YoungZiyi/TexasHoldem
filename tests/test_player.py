@@ -1,6 +1,6 @@
 
-from texas_holdem.player import Player
-from texas_holdem.card import Card, Suit, Rank
+from src.backend.texas_holdem.player import Player
+from src.backend.texas_holdem.card import Card, Suit, Rank
 
 
 def test_player_creation():
