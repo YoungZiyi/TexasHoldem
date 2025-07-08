@@ -85,7 +85,27 @@ You can containerize and run the application using Docker and Docker Compose.
 *   **`POST /games/{game_id}`**: Create a new game.
     *   **Body:** `["Player1Name", "Player2Name", ...]`
 *   **`GET /games/{game_id}`**: Get the current state of a game.
-*   **`POST /games/{game_id}/deal`**: Deal cards based on the current game phase (hole cards, flop, turn, river).
+*   **`POST /games/{game_id}/deal`**: Deal cards based on the current game phase (hole cards, flop, turn, river). After the river card is dealt, the backend will automatically determine and return the winner based on poker hand rankings.
+
+## Running the Frontend
+
+To run the frontend application:
+
+1.  **Navigate to the frontend directory:**
+    ```bash
+    cd src/frontend
+    ```
+
+2.  **Install frontend dependencies:**
+    ```bash
+    npm install
+    ```
+
+3.  **Start the development server:**
+    ```bash
+    npm run dev
+    ```
+    The frontend application will typically be available at `http://localhost:5173` (or another port if 5173 is in use).
 
 ## Running Tests
 
