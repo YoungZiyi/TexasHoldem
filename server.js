@@ -1,9 +1,13 @@
-const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 4000;
+
+// 自动检测 SSL 证书，有则用 HTTPS，无则用 HTTP
+const sslKeyPath = path.join(__dirname, 'ssl', 'server.key');
+const sslCertPath = path.join(__dirname, 'ssl', 'server.crt');
+const hasSSL = fs.existsSync(sslKeyPath) && fs.existsSync(sslCertPath);
 
 // ============ 牌组工具 ============
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -501,8 +505,8 @@ wss.on('connection', (ws) => {
   ws.on('error', () => leaveRoom(ws));
 });
 
-// ============ HTTP ============
-const server = http.createServer((req, res) => {
+// ============ HTTP/HTTPS ============
+function requestHandler(req, res) {
   if (req.url === '/' || req.url === '/index.html') {
     fs.readFile(path.join(__dirname, 'public', 'index.html'), (err, data) => {
       if (err) { res.writeHead(500); res.end('Error'); }
@@ -511,12 +515,25 @@ const server = http.createServer((req, res) => {
   } else {
     res.writeHead(404); res.end('Not Found');
   }
-});
+}
+
+let server;
+if (hasSSL) {
+  const https = require('https');
+  server = https.createServer({
+    key: fs.readFileSync(sslKeyPath),
+    cert: fs.readFileSync(sslCertPath),
+  }, requestHandler);
+} else {
+  const http = require('http');
+  server = http.createServer(requestHandler);
+}
 
 server.on('upgrade', (req, socket, head) => {
   wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
 });
 
 server.listen(PORT, () => {
-  console.log(`Texas Poker Server running on http://0.0.0.0:${PORT}`);
+  const proto = hasSSL ? 'https' : 'http';
+  console.log(`Texas Poker Server running on ${proto}://0.0.0.0:${PORT}`);
 });
