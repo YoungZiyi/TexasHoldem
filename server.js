@@ -484,6 +484,16 @@ wss.on('connection', (ws) => {
         if (!room) return;
         const p = room.players.find(pl => pl.id === c.playerId);
         if (p) { p.chips = 1000; broadcastState(room); }
+      } else if (msg.type.startsWith('voice_')) {
+        if (!c) return;
+        const room = rooms.get(c.roomId);
+        if (!room) return;
+        const data = JSON.stringify({ ...msg, from: c.playerId });
+        for (const p of room.players) {
+          if (p.id !== c.playerId && p.ws && p.ws.readyState === WebSocket.OPEN) {
+            p.ws.send(data);
+          }
+        }
       }
     } catch (e) { console.error('msg err', e); }
   });

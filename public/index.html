@@ -446,6 +446,34 @@
     font-size: 0.8rem;
     cursor: pointer;
   }
+
+  /* 语音按钮 */
+  .voice-btn {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    border: none;
+    background: #444;
+    color: #fff;
+    font-size: 0.85rem;
+    cursor: pointer;
+    z-index: 50;
+    transition: background 0.2s, transform 0.1s;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .voice-btn:active { transform: scale(0.95); }
+  .voice-btn.on { background: #4caf50; }
+  .voice-btn.connecting { background: #ff9800; }
+
+  /* 麦克风状态图标 */
+  .mic-status {
+    font-size: 0.65rem;
+    margin-left: 3px;
+  }
 </style>
 </head>
 <body>
@@ -478,6 +506,7 @@
 
 <!-- 游戏页 -->
 <div id="game-page" class="page">
+  <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">🎙️ 语音</button>
   <div id="table-area">
     <div class="players-top" id="opponents"></div>
     <div class="table-surface">
@@ -528,6 +557,8 @@
   let isHost = false;
   let state = null;
   let showdownData = null;
+  let voiceChat = null;
+  let voiceStatus = {}; // playerId -> boolean
 
   // ========== 页面切换 ==========
   function showPage(id) {
@@ -567,6 +598,8 @@
       } else if (msg.type === 'showdown') {
         showdownData = msg;
         renderShowdown();
+      } else if (msg.type.startsWith('voice_')) {
+        if (voiceChat) voiceChat.handleMessage(msg);
       } else if (msg.type === 'error') {
         showToast(msg.message);
       }
@@ -675,7 +708,8 @@
     const isDealer = state.dealerIndex >= 0 && state.players[state.dealerIndex]?.id === p.id;
     let html = `<div class="seat ${p.folded ? 'folded' : ''} ${p.allIn ? 'allin' : ''} ${isTurn ? 'active-turn' : ''} seat-pos">`;
     if (isDealer) html += `<div class="dealer-btn">D</div>`;
-    html += `<div class="seat-name">${escapeHtml(p.name)}</div>`;
+    const micOn = voiceStatus[p.id];
+    html += `<div class="seat-name">${escapeHtml(p.name)}${micOn ? '<span class="mic-status">🎤</span>' : ''}</div>`;
     html += `<div class="seat-chips">${p.chips}</div>`;
     if (p.streetBet > 0) html += `<div class="seat-bet">${p.streetBet}</div>`;
     html += `<div class="seat-cards">`;
@@ -804,6 +838,169 @@
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+  }
+
+  // ========== 语音聊天 ==========
+  class VoiceChat {
+    constructor(ws, myId) {
+      this.ws = ws;
+      this.myId = myId;
+      this.localStream = null;
+      this.peers = new Map(); // playerId -> RTCPeerConnection
+      this.enabled = false;
+    }
+
+    async start() {
+      try {
+        this.localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        this.enabled = true;
+        this.updateUI();
+        this.ws.send(JSON.stringify({ type: 'voice_status', enabled: true }));
+        // 向房间内已开启语音的玩家发送 offer
+        if (state && state.players) {
+          for (const p of state.players) {
+            if (p.id !== this.myId && voiceStatus[p.id]) {
+              this.createOffer(p.id);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Mic error:', err);
+        showToast('无法访问麦克风，请检查权限');
+      }
+    }
+
+    stop() {
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(t => t.stop());
+        this.localStream = null;
+      }
+      this.peers.forEach(pc => pc.close());
+      this.peers.clear();
+      this.enabled = false;
+      this.updateUI();
+      this.ws.send(JSON.stringify({ type: 'voice_status', enabled: false }));
+      document.querySelectorAll('.remote-audio').forEach(el => el.remove());
+    }
+
+    async createOffer(peerId) {
+      if (this.peers.has(peerId)) return;
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      this.peers.set(peerId, pc);
+
+      this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+
+      pc.ontrack = (e) => this.handleRemoteStream(peerId, e.streams[0]);
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          this.ws.send(JSON.stringify({ type: 'voice_candidate', to: peerId, candidate: e.candidate }));
+        }
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+      this.ws.send(JSON.stringify({ type: 'voice_offer', to: peerId, sdp: pc.localDescription }));
+    }
+
+    async handleOffer(from, sdp) {
+      if (this.peers.has(from)) { this.peers.get(from).close(); }
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]
+      });
+      this.peers.set(from, pc);
+
+      if (this.localStream) {
+        this.localStream.getTracks().forEach(t => pc.addTrack(t, this.localStream));
+      }
+
+      pc.ontrack = (e) => this.handleRemoteStream(from, e.streams[0]);
+      pc.onicecandidate = (e) => {
+        if (e.candidate) {
+          this.ws.send(JSON.stringify({ type: 'voice_candidate', to: from, candidate: e.candidate }));
+        }
+      };
+
+      await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this.ws.send(JSON.stringify({ type: 'voice_answer', to: from, sdp: pc.localDescription }));
+    }
+
+    async handleAnswer(from, sdp) {
+      const pc = this.peers.get(from);
+      if (pc) await pc.setRemoteDescription(new RTCSessionDescription(sdp));
+    }
+
+    async handleCandidate(from, candidate) {
+      const pc = this.peers.get(from);
+      if (pc) await pc.addIceCandidate(new RTCIceCandidate(candidate));
+    }
+
+    handleRemoteStream(peerId, stream) {
+      let audio = document.getElementById(`audio-${peerId}`);
+      if (!audio) {
+        audio = document.createElement('audio');
+        audio.id = `audio-${peerId}`;
+        audio.className = 'remote-audio';
+        audio.autoplay = true;
+        document.body.appendChild(audio);
+      }
+      audio.srcObject = stream;
+    }
+
+    updateUI() {
+      const btn = document.getElementById('voice-btn');
+      if (!btn) return;
+      if (this.enabled) {
+        btn.classList.add('on');
+        btn.textContent = '🔊 语音中';
+      } else {
+        btn.classList.remove('on');
+        btn.textContent = '🎙️ 语音';
+      }
+    }
+
+    handleMessage(msg) {
+      if (!this.enabled && msg.type !== 'voice_status') return;
+      if (msg.to && msg.to !== this.myId) return;
+
+      switch (msg.type) {
+        case 'voice_offer':
+          this.handleOffer(msg.from, msg.sdp);
+          break;
+        case 'voice_answer':
+          this.handleAnswer(msg.from, msg.sdp);
+          break;
+        case 'voice_candidate':
+          this.handleCandidate(msg.from, msg.candidate);
+          break;
+        case 'voice_status':
+          voiceStatus[msg.from] = msg.enabled;
+          if (state) renderGame();
+          if (msg.enabled && this.enabled) {
+            this.createOffer(msg.from);
+          }
+          if (!msg.enabled) {
+            // 对方关闭语音，清理连接
+            const pc = this.peers.get(msg.from);
+            if (pc) { pc.close(); this.peers.delete(msg.from); }
+            const audio = document.getElementById(`audio-${msg.from}`);
+            if (audio) audio.remove();
+          }
+          break;
+      }
+    }
+  }
+
+  function toggleVoice() {
+    if (!voiceChat) voiceChat = new VoiceChat(ws, myId);
+    if (voiceChat.enabled) {
+      voiceChat.stop();
+    } else {
+      voiceChat.start();
+    }
   }
 
   // ========== 启动 ==========
