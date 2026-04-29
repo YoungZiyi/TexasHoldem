@@ -1,0 +1,12 @@
+{
+  "name": "texas-poker",
+  "version": "1.0.0",
+  "description": "Simple Texas Hold'em poker game",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ws": "^8.16.0"
+  }
+}
