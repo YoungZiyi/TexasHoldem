@@ -32,7 +32,7 @@
   .login-bg {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background-image: url('https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=1920');
+    background-image: url('https://images.unsplash.com/photo-1515886657613-9f3515b0c78f?w=1920&q=80');
     background-size: cover;
     background-position: center;
     z-index: 0;
@@ -533,25 +533,38 @@
     position: fixed;
     top: 0;
     bottom: 0;
-    width: 380px;
+    width: 420px;
     background-size: cover;
     background-position: center top;
     background-repeat: no-repeat;
     z-index: 1;
     pointer-events: none;
   }
+  .dealer::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    z-index: 2;
+    pointer-events: none;
+  }
   .dealer-left {
     left: 0;
-    background-image: url('https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=500');
+    background-image: url('https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&q=80');
+  }
+  .dealer-left::before {
+    background: linear-gradient(to right, transparent 40%, #1a1a2e 100%);
   }
   .dealer-right {
     right: 0;
-    background-image: url('https://images.pexels.com/photos/2896844/pexels-photo-2896844.jpeg?auto=compress&cs=tinysrgb&w=500');
+    background-image: url('https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&q=80');
+  }
+  .dealer-right::before {
+    background: linear-gradient(to left, transparent 40%, #1a1a2e 100%);
   }
   @media (min-width: 1200px) {
     .dealer { display: block; }
-    #game-page { padding-left: 360px; padding-right: 360px; }
-    #table-area { max-width: 650px; }
+    #game-page { padding-left: 400px; padding-right: 400px; }
+    #table-area { max-width: 600px; }
   }
 
   /* 语音按钮 */
