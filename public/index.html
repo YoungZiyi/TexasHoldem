@@ -447,6 +447,58 @@
     cursor: pointer;
   }
 
+  /* ========== 动画 ========== */
+  @keyframes cardDeal {
+    from { transform: translateY(-60px) scale(0.6) rotateY(180deg); opacity: 0; }
+    to { transform: translateY(0) scale(1) rotateY(0); opacity: 1; }
+  }
+  @keyframes cardFlip {
+    0% { transform: rotateY(0); }
+    50% { transform: rotateY(90deg); }
+    100% { transform: rotateY(0); }
+  }
+  @keyframes chipFly {
+    from { transform: scale(0) translateY(-20px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+  }
+  @keyframes potPulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+  @keyframes pulseGlow {
+    0%, 100% { box-shadow: 0 0 0 2px #ffd700; }
+    50% { box-shadow: 0 0 16px 4px rgba(255,215,0,0.7); }
+  }
+  @keyframes slideIn {
+    from { transform: translateX(30px); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+  }
+  @keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20% { transform: translateX(-4px); }
+    40% { transform: translateX(4px); }
+    60% { transform: translateX(-3px); }
+    80% { transform: translateX(3px); }
+  }
+  @keyframes allInFlash {
+    0% { filter: brightness(1); }
+    30% { filter: brightness(1.5); }
+    100% { filter: brightness(1); }
+  }
+  @keyframes foldSlide {
+    to { transform: translateX(-40px) rotate(-15deg); opacity: 0.2; }
+  }
+
+  .anim-card-deal { animation: cardDeal 0.35s ease-out; }
+  .anim-card-flip { animation: cardFlip 0.5s ease-in-out; }
+  .anim-chip { animation: chipFly 0.25s ease-out; }
+  .anim-pot { animation: potPulse 0.3s ease; }
+  .anim-glow { animation: pulseGlow 1.2s ease-in-out infinite; }
+  .anim-slide { animation: slideIn 0.3s ease-out; }
+  .anim-shake { animation: shake 0.3s ease; }
+  .anim-allin { animation: allInFlash 0.4s ease; }
+  .anim-fold { animation: foldSlide 0.3s ease forwards; }
+
   /* 语音按钮 */
   .voice-btn {
     position: fixed;
@@ -556,9 +608,48 @@
   let myId = null;
   let isHost = false;
   let state = null;
+  let prevState = null;
   let showdownData = null;
   let voiceChat = null;
   let voiceStatus = {}; // playerId -> boolean
+  let sfx = null;
+  let audioCtxStarted = false;
+
+  // ========== 音效 ==========
+  class SoundFX {
+    constructor() { this.ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+    _ensure() {
+      if (this.ctx.state === 'suspended') this.ctx.resume();
+    }
+    play(freq, type, duration, vol, ramp) {
+      this._ensure();
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+      if (ramp) osc.frequency.exponentialRampToValueAtTime(ramp, this.ctx.currentTime + duration);
+      gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+      osc.start();
+      osc.stop(this.ctx.currentTime + duration);
+    }
+    deal() { this.play(900, 'sine', 0.08, 0.12, 1300); }
+    deal2() { this.play(750, 'sine', 0.06, 0.1, 1100); }
+    chip() { this.play(2000, 'sine', 0.08, 0.08, null); }
+    fold() { this.play(350, 'triangle', 0.18, 0.08, 80); }
+    allin() { this.play(180, 'sawtooth', 0.35, 0.08, 600); }
+    win() {
+      [523, 659, 784, 1047].forEach((f, i) => {
+        this.play(f, 'sine', 0.35, 0.1 - i * 0.02, null);
+      });
+    }
+    check() { this.play(600, 'sine', 0.05, 0.06, null); }
+  }
+  function initAudio() {
+    if (!audioCtxStarted) { sfx = new SoundFX(); audioCtxStarted = true; }
+  }
 
   // ========== 页面切换 ==========
   function showPage(id) {
@@ -614,6 +705,7 @@
 
   // ========== 登录/大厅 ==========
   function createRoom() {
+    initAudio();
     const name = document.getElementById('name-input').value.trim();
     if (!name) { showToast('请输入名字'); return; }
     if (!ws) connect();
@@ -621,6 +713,7 @@
   }
 
   function joinRoom() {
+    initAudio();
     const name = document.getElementById('name-input').value.trim();
     const roomId = document.getElementById('room-input').value.trim();
     if (!name) { showToast('请输入名字'); return; }
@@ -660,28 +753,52 @@
   // ========== 游戏渲染 ==========
   function renderGame() {
     if (!state) return;
+
+    // 检测变化触发动画/音效
+    if (prevState) {
+      detectChanges(prevState, state);
+    }
+    prevState = JSON.parse(JSON.stringify(state));
+
     const me = state.players.find(p => p.id === myId);
     const opponents = state.players.filter(p => p.id !== myId);
 
     // 底池和街道
-    document.getElementById('pot-display').textContent = `底池: ${state.pot}`;
+    const potEl = document.getElementById('pot-display');
+    potEl.textContent = `底池: ${state.pot}`;
     const streetNames = { preflop: '翻牌前', flop: '翻牌圈', turn: '转牌圈', river: '河牌圈' };
     document.getElementById('street-label').textContent = streetNames[state.street] || state.street || '等待中';
 
-    // 公共牌
+    // 公共牌（带动画标记）
     const cc = document.getElementById('community-cards');
+    const prevCC = prevState ? prevState.communityCards.length : 0;
     cc.innerHTML = '';
     for (let i = 0; i < 5; i++) {
+      let card;
       if (i < state.communityCards.length) {
-        cc.appendChild(makeCard(state.communityCards[i]));
+        card = makeCard(state.communityCards[i]);
+        if (i >= prevCC && prevState) card.classList.add('anim-card-deal');
       } else {
-        cc.appendChild(makeBackCard());
+        card = makeBackCard();
       }
+      cc.appendChild(card);
     }
 
     // 对手
     const oppDiv = document.getElementById('opponents');
     oppDiv.innerHTML = opponents.map(p => makeSeat(p, state.currentPlayerIndex >= 0 && state.players[state.currentPlayerIndex]?.id === p.id)).join('');
+    // 给新下注的对手座位加筹码动画
+    if (prevState) {
+      opponents.forEach(p => {
+        const prevP = prevState.players.find(x => x.id === p.id);
+        if (prevP && p.streetBet > prevP.streetBet) {
+          const seatEls = oppDiv.querySelectorAll('.seat');
+          seatEls.forEach(el => {
+            if (el.textContent.includes(p.name)) el.classList.add('anim-chip');
+          });
+        }
+      });
+    }
 
     // 自己
     if (me) {
@@ -706,7 +823,7 @@
 
   function makeSeat(p, isTurn) {
     const isDealer = state.dealerIndex >= 0 && state.players[state.dealerIndex]?.id === p.id;
-    let html = `<div class="seat ${p.folded ? 'folded' : ''} ${p.allIn ? 'allin' : ''} ${isTurn ? 'active-turn' : ''} seat-pos">`;
+    let html = `<div class="seat ${p.folded ? 'folded' : ''} ${p.allIn ? 'allin' : ''} ${isTurn ? 'active-turn anim-glow' : ''} seat-pos">`;
     if (isDealer) html += `<div class="dealer-btn">D</div>`;
     const micOn = voiceStatus[p.id];
     html += `<div class="seat-name">${escapeHtml(p.name)}${micOn ? '<span class="mic-status">🎤</span>' : ''}</div>`;
@@ -784,18 +901,76 @@
     raiseInput.placeholder = `最少 ${minRaise}`;
   }
 
+  // ========== 变化检测 + 动画/音效 ==========
+  function detectChanges(prev, curr) {
+    if (!sfx) return;
+
+    // 公共牌增加
+    if (curr.communityCards.length > prev.communityCards.length) {
+      sfx.deal();
+      document.getElementById('pot-display').classList.add('anim-pot');
+      setTimeout(() => document.getElementById('pot-display').classList.remove('anim-pot'), 400);
+    }
+
+    // 玩家状态变化
+    curr.players.forEach(p => {
+      const prevP = prev.players.find(x => x.id === p.id);
+      if (!prevP) return;
+
+      // 弃牌
+      if (p.folded && !prevP.folded) {
+        sfx.fold();
+        if (p.id === myId) document.body.classList.add('anim-shake');
+      }
+      // All-in
+      if (p.allIn && !prevP.allIn) {
+        sfx.allin();
+        document.body.classList.add('anim-allin');
+        setTimeout(() => document.body.classList.remove('anim-allin'), 500);
+      }
+      // 下注/跟注（筹码增加）
+      if (p.streetBet > prevP.streetBet && !p.allIn) {
+        sfx.chip();
+      }
+    });
+
+    // 自己手牌出现（首次发牌）
+    if (curr.yourHand && curr.yourHand.length === 2) {
+      const prevHand = prev.yourHand || [];
+      if (curr.yourHand.length > prevHand.length) {
+        sfx.deal2();
+      }
+    }
+
+    // Showdown
+    if (curr.status === 'showdown' && prev.status !== 'showdown') {
+      sfx.win();
+    }
+
+    // 清理 body 上的临时动画类
+    setTimeout(() => document.body.classList.remove('anim-shake'), 400);
+  }
+
   // ========== 操作 ==========
   function doAction(type) {
+    initAudio();
+    if (type === 'fold') sfx && sfx.fold();
+    if (type === 'allin') sfx && sfx.allin();
+    if (type === 'check') sfx && sfx.check();
     ws.send(JSON.stringify({ type: 'action', action: { type } }));
   }
 
   function doCall() {
+    initAudio();
+    sfx && sfx.chip();
     ws.send(JSON.stringify({ type: 'action', action: { type: 'call' } }));
   }
 
   function doRaise() {
+    initAudio();
     const val = parseInt(document.getElementById('raise-input').value);
     if (isNaN(val) || val <= 0) { showToast('请输入有效金额'); return; }
+    sfx && sfx.chip();
     ws.send(JSON.stringify({ type: 'action', action: { type: 'raise', amount: val } }));
   }
 
