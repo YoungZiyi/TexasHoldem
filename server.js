@@ -267,10 +267,11 @@ function skipInactive(room) {
   let attempts = 0;
   while (attempts < room.players.length) {
     const p = room.players[room.currentPlayerIndex];
-    if (!p.folded && !p.allIn && p.ws) break;
+    if (!p.folded && !p.allIn && p.ws) return true;
     room.currentPlayerIndex = (room.currentPlayerIndex + 1) % room.players.length;
     attempts++;
   }
+  return false;
 }
 
 function handleAction(room, playerId, action) {
@@ -381,7 +382,12 @@ function endStreet(room) {
   }
 
   room.currentPlayerIndex = (room.dealerIndex + 1) % room.players.length;
-  skipInactive(room);
+  const hasNext = skipInactive(room);
+  // 如果所有人都 all-in 了，没有人可以行动，自动继续推进
+  if (!hasNext) {
+    checkAdvance(room);
+    return;
+  }
   broadcastState(room);
 }
 
