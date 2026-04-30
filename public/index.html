@@ -499,6 +499,67 @@
   .anim-allin { animation: allInFlash 0.4s ease; }
   .anim-fold { animation: foldSlide 0.3s ease forwards; }
 
+  /* ========== 荷官 ========== */
+  .dealer {
+    display: none;
+    position: fixed;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 260px;
+    height: 520px;
+    border-radius: 16px;
+    background-size: cover;
+    background-position: center top;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    border: 2px solid rgba(255,215,0,0.3);
+    overflow: hidden;
+    z-index: 10;
+  }
+  .dealer::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 120px;
+    background: linear-gradient(to top, rgba(26,26,46,0.95), transparent);
+  }
+  .dealer-name {
+    position: absolute;
+    bottom: 16px; left: 0; right: 0;
+    text-align: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #ffd700;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+    z-index: 2;
+    letter-spacing: 2px;
+  }
+  .dealer-badge {
+    position: absolute;
+    top: 12px; left: 50%;
+    transform: translateX(-50%);
+    background: linear-gradient(135deg, #e94560, #ff6b6b);
+    color: #fff;
+    padding: 4px 14px;
+    border-radius: 12px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    z-index: 2;
+    box-shadow: 0 2px 8px rgba(233,69,96,0.4);
+  }
+  .dealer-left {
+    left: 20px;
+    background-image: url('https://images.pexels.com/photos/7594254/pexels-photo-7594254.jpeg?auto=compress&cs=tinysrgb&w=350&h=650&fit=crop');
+  }
+  .dealer-right {
+    right: 20px;
+    background-image: url('https://images.pexels.com/photos/4153141/pexels-photo-4153141.jpeg?auto=compress&cs=tinysrgb&w=350&h=650&fit=crop');
+  }
+  @media (min-width: 1100px) {
+    .dealer { display: block; }
+    #game-page { padding-left: 300px; padding-right: 300px; }
+    #table-area { max-width: 700px; }
+  }
+
   /* 语音按钮 */
   .voice-btn {
     position: fixed;
@@ -559,6 +620,8 @@
 <!-- 游戏页 -->
 <div id="game-page" class="page">
   <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">🎙️ 语音</button>
+  <div class="dealer dealer-left"><span class="dealer-badge">♠ 荷官 Lisa</span><span class="dealer-name">专业发牌</span></div>
+  <div class="dealer dealer-right"><span class="dealer-badge">♥ 荷官 Anna</span><span class="dealer-name">幸运女神</span></div>
   <div id="table-area">
     <div class="players-top" id="opponents"></div>
     <div class="table-surface">
