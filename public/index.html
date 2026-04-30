@@ -25,6 +25,34 @@
   .page.active { display: flex; }
 
   /* 登录页 */
+  #login-page {
+    position: relative;
+    padding: 0;
+  }
+  .login-bg {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-image: url('https://images.pexels.com/photos/1239291/pexels-photo-1239291.jpeg?auto=compress&cs=tinysrgb&w=1920');
+    background-size: cover;
+    background-position: center;
+    z-index: 0;
+  }
+  .login-overlay {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(26,26,46,0.75);
+    z-index: 1;
+  }
+  .login-content {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    width: 100%;
+  }
   #login-page h1 {
     font-size: 2.5rem;
     margin-bottom: 10px;
@@ -32,7 +60,7 @@
     text-shadow: 0 2px 4px rgba(0,0,0,0.5);
   }
   #login-page .subtitle {
-    color: #888;
+    color: #aaa;
     margin-bottom: 40px;
     font-size: 0.95rem;
   }
@@ -499,65 +527,31 @@
   .anim-allin { animation: allInFlash 0.4s ease; }
   .anim-fold { animation: foldSlide 0.3s ease forwards; }
 
-  /* ========== 荷官 ========== */
+  /* ========== 荷官（PC 两侧） ========== */
   .dealer {
     display: none;
     position: fixed;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 260px;
-    height: 520px;
-    border-radius: 16px;
+    top: 0;
+    bottom: 0;
+    width: 380px;
     background-size: cover;
     background-position: center top;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-    border: 2px solid rgba(255,215,0,0.3);
-    overflow: hidden;
-    z-index: 10;
-  }
-  .dealer::after {
-    content: '';
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    height: 120px;
-    background: linear-gradient(to top, rgba(26,26,46,0.95), transparent);
-  }
-  .dealer-name {
-    position: absolute;
-    bottom: 16px; left: 0; right: 0;
-    text-align: center;
-    font-size: 0.9rem;
-    font-weight: 600;
-    color: #ffd700;
-    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
-    z-index: 2;
-    letter-spacing: 2px;
-  }
-  .dealer-badge {
-    position: absolute;
-    top: 12px; left: 50%;
-    transform: translateX(-50%);
-    background: linear-gradient(135deg, #e94560, #ff6b6b);
-    color: #fff;
-    padding: 4px 14px;
-    border-radius: 12px;
-    font-size: 0.7rem;
-    font-weight: bold;
-    z-index: 2;
-    box-shadow: 0 2px 8px rgba(233,69,96,0.4);
+    background-repeat: no-repeat;
+    z-index: 1;
+    pointer-events: none;
   }
   .dealer-left {
-    left: 20px;
-    background-image: url('https://images.pexels.com/photos/7594254/pexels-photo-7594254.jpeg?auto=compress&cs=tinysrgb&w=350&h=650&fit=crop');
+    left: 0;
+    background-image: url('https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=500');
   }
   .dealer-right {
-    right: 20px;
-    background-image: url('https://images.pexels.com/photos/4153141/pexels-photo-4153141.jpeg?auto=compress&cs=tinysrgb&w=350&h=650&fit=crop');
+    right: 0;
+    background-image: url('https://images.pexels.com/photos/2896844/pexels-photo-2896844.jpeg?auto=compress&cs=tinysrgb&w=500');
   }
-  @media (min-width: 1100px) {
+  @media (min-width: 1200px) {
     .dealer { display: block; }
-    #game-page { padding-left: 300px; padding-right: 300px; }
-    #table-area { max-width: 700px; }
+    #game-page { padding-left: 360px; padding-right: 360px; }
+    #table-area { max-width: 650px; }
   }
 
   /* 语音按钮 */
@@ -593,8 +587,11 @@
 
 <!-- 登录页 -->
 <div id="login-page" class="page active">
-  <h1>♠ Texas Hold'em ♥</h1>
-  <div class="subtitle">和朋友一起玩的德州扑克</div>
+  <div class="login-bg"></div>
+  <div class="login-overlay"></div>
+  <div class="login-content">
+    <h1>♠ Texas Hold'em ♥</h1>
+    <div class="subtitle">和朋友一起玩的德州扑克</div>
   <div class="input-group">
     <label>你的名字</label>
     <input type="text" id="name-input" placeholder="输入昵称" maxlength="12">
@@ -606,6 +603,7 @@
     <input type="text" id="room-input" placeholder="输入6位房间号" maxlength="6">
   </div>
   <button class="btn btn-secondary" onclick="joinRoom()">加入房间</button>
+  </div>
 </div>
 
 <!-- 大厅页 -->
@@ -620,8 +618,8 @@
 <!-- 游戏页 -->
 <div id="game-page" class="page">
   <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">🎙️ 语音</button>
-  <div class="dealer dealer-left"><span class="dealer-badge">♠ 荷官 Lisa</span><span class="dealer-name">专业发牌</span></div>
-  <div class="dealer dealer-right"><span class="dealer-badge">♥ 荷官 Anna</span><span class="dealer-name">幸运女神</span></div>
+  <div class="dealer dealer-left"></div>
+  <div class="dealer dealer-right"></div>
   <div id="table-area">
     <div class="players-top" id="opponents"></div>
     <div class="table-surface">
