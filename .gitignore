@@ -55,6 +55,9 @@ jspm_packages/
 # Yarn Integrity file
 .yarn-integrity
 
+# SSL certificates
+ssl/
+
 # dotenv environment variable files
 .env
 .env.local

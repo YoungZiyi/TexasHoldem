@@ -523,23 +523,52 @@ function requestHandler(req, res) {
   }
 }
 
-let server;
+function redirectHandler(req, res) {
+  const host = req.headers.host || 'localhost';
+  const redirectUrl = `https://${host}${req.url}`;
+  res.writeHead(301, { Location: redirectUrl });
+  res.end();
+}
+
 if (hasSSL) {
+  const net = require('net');
+  const http = require('http');
   const https = require('https');
-  server = https.createServer({
+
+  const httpServer = http.createServer(redirectHandler);
+  const httpsServer = https.createServer({
     key: fs.readFileSync(sslKeyPath),
     cert: fs.readFileSync(sslCertPath),
   }, requestHandler);
+
+  httpsServer.on('upgrade', (req, socket, head) => {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+  });
+
+  const server = net.createServer((socket) => {
+    socket.once('data', (buffer) => {
+      socket.pause();
+      const isTLS = buffer[0] === 22;
+      if (isTLS) {
+        httpsServer.emit('connection', socket);
+      } else {
+        httpServer.emit('connection', socket);
+      }
+      socket.unshift(buffer);
+      socket.resume();
+    });
+  });
+
+  server.listen(PORT, () => {
+    console.log(`Texas Poker Server running on https://0.0.0.0:${PORT} (HTTP → HTTPS redirect enabled)`);
+  });
 } else {
   const http = require('http');
-  server = http.createServer(requestHandler);
+  const server = http.createServer(requestHandler);
+  server.on('upgrade', (req, socket, head) => {
+    wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
+  });
+  server.listen(PORT, () => {
+    console.log(`Texas Poker Server running on http://0.0.0.0:${PORT}`);
+  });
 }
-
-server.on('upgrade', (req, socket, head) => {
-  wss.handleUpgrade(req, socket, head, (ws) => wss.emit('connection', ws, req));
-});
-
-server.listen(PORT, () => {
-  const proto = hasSSL ? 'https' : 'http';
-  console.log(`Texas Poker Server running on ${proto}://0.0.0.0:${PORT}`);
-});
